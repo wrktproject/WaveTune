@@ -55,14 +55,6 @@ const tracksByMode = {
       youtubeId: 'MqWSWYyFAic', // relaxing music
       artwork: null,
     },
-    {
-      id: 4,
-      title: 'Tostarena: Night',
-      neuralEffect: 'Low Neural Effect',
-      tags: ['CALM', 'NOSTALGIA'],
-      youtubeId: 'BdphGjFITLs', // relaxing music
-      artwork: null,
-    },
 
   ],
   'Focus': [
