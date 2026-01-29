@@ -1,15 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { BrowserRouter, HashRouter } from 'react-router-dom';
 import BackgroundDots from './components/BackgroundDots';
 import WaveAnimation from './components/WaveAnimation';
 import Header from './components/Header';
 import Timer from './components/Timer';
 import PlayerControls from './components/PlayerControls';
 import TrackInfo from './components/TrackInfo';
-import AuthPage from './pages/AuthPage';
 import useYouTubePlayer from './hooks/useYouTubePlayer';
-import useStreak from './hooks/useStreak';
 
 // Track data with YouTube video IDs
 // To add your own tracks, find ambient/focus music on YouTube and copy the video ID
@@ -128,71 +125,21 @@ const tracksByMode = {
   ],
 };
 
-// Protected Route component
-const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-wave-darker flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-wave-accent border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  return children;
-};
-
 // Module-level cache for transition data (survives React Strict Mode remounts)
 let cachedTransitionData = null;
 
 // Main Player Component
 const PlayerPage = () => {
-  const { user, signOut } = useAuth();
-  
-  // Streak tracking hook
-  const { streak } = useStreak(user?.id);
-  
   // YouTube player hook
   const youtube = useYouTubePlayer();
   
-  // Check if we're coming from auth transition
+  // No auth transition needed - always start fresh
   const [transitionData] = useState(() => {
-    // Return cached data if already processed (handles React Strict Mode)
-    if (cachedTransitionData !== null) {
-      const data = cachedTransitionData;
-      // Clear cache after a short delay to allow Strict Mode to complete
-      setTimeout(() => { cachedTransitionData = null; }, 100);
-      return data;
-    }
-    
-    const stored = sessionStorage.getItem('wavetune_transition');
-    if (stored) {
-      sessionStorage.removeItem('wavetune_transition');
-      try {
-        const data = JSON.parse(stored);
-        const elapsed = Date.now() - data.startTime;
-        
-        // Only consider it a valid transition if it's recent (within 5 seconds)
-        if (elapsed < 5000) {
-          // Calculate time offset based on how long the transition has been running
-          const timeOffset = (elapsed / 1000) * 0.015 * 3; // baseSpeed * speedMultiplier * seconds
-          cachedTransitionData = { isFromAuth: true, timeOffset: timeOffset + Math.random() * 5 };
-          return cachedTransitionData;
-        }
-      } catch {
-        // Invalid JSON, ignore
-      }
-    }
     cachedTransitionData = { isFromAuth: false, timeOffset: 0 };
     return cachedTransitionData;
   });
   
-  const isFromAuthTransition = transitionData.isFromAuth;
+  const isFromAuthTransition = false;
   
   // Animation state for entrance - staggered phases (all start hidden)
   const [headerVisible, setHeaderVisible] = useState(false);
@@ -370,9 +317,6 @@ const PlayerPage = () => {
     console.log('Navigate back');
   }, []);
 
-  const handleSignOut = async () => {
-    await signOut();
-  };
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-wave-darker">
@@ -396,8 +340,6 @@ const PlayerPage = () => {
             currentMode={currentMode}
             onModeChange={handleModeChange}
             onBack={handleBack}
-            user={user}
-            onSignOut={handleSignOut}
             currentTime={youtube.currentTime}
             duration={youtube.duration}
             onSeek={handleSeek}
@@ -410,7 +352,7 @@ const PlayerPage = () => {
         <main className={`flex-1 flex flex-col items-center justify-center px-4 transition-all duration-700 ease-out ${
           timerVisible ? 'opacity-100 scale-100 blur-0' : 'opacity-0 scale-90 blur-sm'
         }`}>
-          <Timer isPlaying={isPlaying} mode={currentMode} user={user} />
+          <Timer isPlaying={isPlaying} mode={currentMode} />
         </main>
 
         {/* Bottom section */}
@@ -447,7 +389,6 @@ const PlayerPage = () => {
               isLiked={isLiked}
               onLike={handleLike}
               onDislike={handleDislike}
-              streak={streak}
               position="right"
             />
           </div>
@@ -461,21 +402,9 @@ function App() {
   const Router = window?.location?.protocol === 'file:' ? HashRouter : BrowserRouter;
 
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/auth" element={<AuthPage />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <PlayerPage />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <Router>
+      <PlayerPage />
+    </Router>
   );
 }
 

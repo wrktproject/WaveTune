@@ -4,7 +4,11 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase credentials not found. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file');
+  console.error('❌ Supabase credentials missing!');
+  console.error('Current URL:', supabaseUrl || 'undefined');
+  console.error('Current Key:', supabaseAnonKey ? `${supabaseAnonKey.substring(0, 20)}...` : 'undefined');
+  console.error('Environment:', import.meta.env.MODE);
+  console.error('All env vars:', Object.keys(import.meta.env).filter(k => k.startsWith('VITE_')));
 }
 
 export const supabase = createClient(

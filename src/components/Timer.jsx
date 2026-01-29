@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronDown, Infinity, Clock } from 'lucide-react';
 
-const Timer = ({ isPlaying, mode = 'Focus', user }) => {
+const Timer = ({ isPlaying, mode = 'Focus' }) => {
   const [seconds, setSeconds] = useState(0);
   const [timerMode, setTimerMode] = useState('infinite'); // 'infinite', '25', '50', '90', 'custom'
   const [showDropdown, setShowDropdown] = useState(false);
@@ -20,30 +20,10 @@ const Timer = ({ isPlaying, mode = 'Focus', user }) => {
     { id: 'custom', label: 'Custom Timer', icon: Clock },
   ];
 
-  // Get greeting based on time of day
-  const getGreeting = useCallback(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
-  }, []);
-
-  // Get user's first name
-  const getFirstName = useCallback(() => {
-    if (user?.user_metadata?.full_name) {
-      return user.user_metadata.full_name.split(' ')[0];
-    }
-    if (user?.email) {
-      return user.email.split('@')[0];
-    }
-    return '';
-  }, [user]);
-
   // Get the target text based on mode and playing state
   const getTargetText = useCallback((playing) => {
     if (!playing) {
-      const firstName = getFirstName();
-      return firstName ? `${getGreeting()}, ${firstName}` : getGreeting();
+      return 'Ready to Focus';
     }
     
     switch (mode) {
@@ -56,7 +36,7 @@ const Timer = ({ isPlaying, mode = 'Focus', user }) => {
       default:
         return 'Focused.';
     }
-  }, [mode, getGreeting, getFirstName]);
+  }, [mode]);
 
   // Initialize display text
   const [displayText, setDisplayText] = useState(() => getTargetText(false));
