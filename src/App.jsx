@@ -211,14 +211,32 @@ const PlayerPage = () => {
   // Sync with YouTube player state
   const isPlaying = youtube.isPlaying;
 
+  // Track if we were playing before track change (for auto-play on skip)
+  const wasPlayingRef = useRef(false);
+  const previousTrackIdRef = useRef(null);
+
   // Load video when track or mode changes
   useEffect(() => {
     console.log('Load video effect - isReady:', youtube.isReady, 'videoId:', currentTrack?.youtubeId);
     if (youtube.isReady && currentTrack?.youtubeId) {
-      console.log('Loading video:', currentTrack.youtubeId);
+      // Check if this is a track change (not initial load)
+      const isTrackChange = previousTrackIdRef.current !== null && 
+                           previousTrackIdRef.current !== currentTrack.youtubeId;
+      
+      console.log('Loading video:', currentTrack.youtubeId, 'wasPlaying:', wasPlayingRef.current);
+      previousTrackIdRef.current = currentTrack.youtubeId;
       youtube.loadVideo(currentTrack.youtubeId);
+      
+      // Auto-play if we were playing before (and this is a track change)
+      if (isTrackChange && wasPlayingRef.current) {
+        // Small delay to ensure video is loaded
+        setTimeout(() => {
+          console.log('Auto-playing next track');
+          youtube.play();
+        }, 300);
+      }
     }
-  }, [youtube.isReady, currentTrack?.youtubeId, youtube.loadVideo]);
+  }, [youtube.isReady, currentTrack?.youtubeId, youtube.loadVideo, youtube.play]);
 
   // Sync volume with YouTube
   useEffect(() => {
@@ -275,16 +293,20 @@ const PlayerPage = () => {
   }, [youtube]);
 
   const handleNext = useCallback(() => {
+    // Remember if we were playing before skipping
+    wasPlayingRef.current = youtube.isPlaying;
     const tracks = tracksByMode[currentMode] || tracksByMode.Liminal;
     setCurrentTrackIndex((prev) => (prev + 1) % tracks.length);
-  }, [currentMode]);
+  }, [currentMode, youtube.isPlaying]);
 
   const handlePrevious = useCallback(() => {
+    // Remember if we were playing before skipping
+    wasPlayingRef.current = youtube.isPlaying;
     const tracks = tracksByMode[currentMode] || tracksByMode.Focus;
     setCurrentTrackIndex((prev) => 
       prev === 0 ? tracks.length - 1 : prev - 1
     );
-  }, [currentMode]);
+  }, [currentMode, youtube.isPlaying]);
 
   const handleToggleLoop = useCallback(() => {
     setIsLooping((prev) => !prev);

@@ -11,6 +11,7 @@ const Timer = ({ isPlaying, mode = 'Focus' }) => {
   const [customMinutes, setCustomMinutes] = useState(0);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const prevIsPlaying = useRef(isPlaying);
+  const sessionActiveRef = useRef(false); // Track if we're in an active playing session
 
   const timerOptions = [
     { id: 'infinite', label: 'Infinite Play', icon: Infinity },
@@ -66,14 +67,47 @@ const Timer = ({ isPlaying, mode = 'Focus' }) => {
     }
   }, [isPlaying, getTargetText]);
 
+  // Track playing session - once started, keep timer going even during brief pauses
+  useEffect(() => {
+    if (isPlaying) {
+      sessionActiveRef.current = true;
+    }
+  }, [isPlaying]);
+
+  // Timer continues if we're in an active session
+  // This allows timer to keep running during brief pauses when skipping tracks
   useEffect(() => {
     let interval;
+    let pauseTimeout;
+    
     if (isPlaying) {
+      // Mark session as active and start timer
+      sessionActiveRef.current = true;
+      if (pauseTimeout) clearTimeout(pauseTimeout);
+      
+      interval = setInterval(() => {
+        setSeconds((prev) => prev + 1);
+      }, 1000);
+    } else if (sessionActiveRef.current) {
+      // We're paused but in an active session
+      // Keep timer running for 2 seconds to allow track changes
+      pauseTimeout = setTimeout(() => {
+        // Only stop session if still paused after grace period
+        if (!isPlaying) {
+          sessionActiveRef.current = false;
+        }
+      }, 2000);
+      
+      // Continue timer during grace period
       interval = setInterval(() => {
         setSeconds((prev) => prev + 1);
       }, 1000);
     }
-    return () => clearInterval(interval);
+    
+    return () => {
+      if (interval) clearInterval(interval);
+      if (pauseTimeout) clearTimeout(pauseTimeout);
+    };
   }, [isPlaying]);
 
   const formatTime = useCallback((totalSeconds) => {
