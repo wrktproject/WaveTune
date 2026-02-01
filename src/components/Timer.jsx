@@ -1,294 +1,179 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ChevronDown, Infinity, Clock } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Infinity, Clock, Play } from 'lucide-react';
 
-const Timer = ({ isPlaying, mode = 'Focus' }) => {
-  const [seconds, setSeconds] = useState(0);
-  const [timerMode, setTimerMode] = useState('infinite'); // 'infinite', '25', '50', '90', 'custom'
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [transitionPhase, setTransitionPhase] = useState('idle'); // 'idle', 'morphing-out', 'morphing-in'
-  const [isPlayingStyle, setIsPlayingStyle] = useState(false); // Tracks style separately from isPlaying
-  const [customHours, setCustomHours] = useState(1);
-  const [customMinutes, setCustomMinutes] = useState(0);
-  const [showCustomInput, setShowCustomInput] = useState(false);
-  const prevIsPlaying = useRef(isPlaying);
-  const sessionActiveRef = useRef(false); // Track if we're in an active playing session
+const formatTime = (seconds) => {
+  if (!seconds || seconds < 0 || Number.isNaN(seconds)) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
 
-  const timerOptions = [
-    { id: 'infinite', label: 'Infinite Play', icon: Infinity },
-    { id: '25', label: '25 minutes' },
-    { id: '50', label: '50 minutes' },
-    { id: '90', label: '90 minutes' },
-    { id: 'custom', label: 'Custom Timer', icon: Clock },
-  ];
+const clampMinutes = (value) => {
+  const num = parseInt(value, 10);
+  if (Number.isNaN(num)) return 0;
+  return Math.max(1, Math.min(999, num));
+};
 
-  // Get the target text based on mode and playing state
-  const getTargetText = useCallback((playing) => {
-    if (!playing) {
-      return 'Ready to Focus';
-    }
-    
-    switch (mode) {
-      case 'Focus':
-        return 'Focused.';
-      case 'Liminal':
-        return 'Exploring.';
-      case 'Games':
-        return 'Gaming.';
-      default:
-        return 'Focused.';
-    }
-  }, [mode]);
+const Timer = ({
+  isPlaying = false,
+  onTimerComplete,
+  onTimerReset,
+  onTimerStart,
+}) => {
+  const [mode, setMode] = useState('infinite'); // 'infinite' | 'custom'
+  const [customMinutes, setCustomMinutes] = useState('25');
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [isActive, setIsActive] = useState(false);
+  const [isDone, setIsDone] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const completedRef = useRef(false);
 
-  // Initialize display text
-  const [displayText, setDisplayText] = useState(() => getTargetText(false));
+  const displayTime = useMemo(() => {
+    if (mode === 'infinite') return formatTime(elapsedSeconds);
+    return formatTime(remainingSeconds);
+  }, [mode, elapsedSeconds, remainingSeconds]);
 
-  // Handle smooth morphing text transition when isPlaying changes
+  // Tick up for infinite mode
   useEffect(() => {
-    if (prevIsPlaying.current !== isPlaying) {
-      prevIsPlaying.current = isPlaying;
-      const newText = getTargetText(isPlaying);
-      
-      // Start morph out
-      setTransitionPhase('morphing-out');
-      
-      // After morph out, change text AND style together, then morph in
-      const morphTimeout = setTimeout(() => {
-        setDisplayText(newText);
-        setIsPlayingStyle(isPlaying); // Update style at same time as text
-        setTransitionPhase('morphing-in');
-        
-        // After morph in, return to idle
-        setTimeout(() => {
-          setTransitionPhase('idle');
-        }, 350);
-      }, 200);
-      
-      return () => clearTimeout(morphTimeout);
-    }
-  }, [isPlaying, getTargetText]);
+    if (!isPlaying || mode !== 'infinite') return;
+    const interval = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isPlaying, mode]);
 
-  // Track playing session - once started, keep timer going even during brief pauses
+  // Tick down for custom mode
   useEffect(() => {
-    if (isPlaying) {
-      sessionActiveRef.current = true;
-    }
-  }, [isPlaying]);
+    if (!isPlaying || !isActive || isDone || mode !== 'custom') return;
+    const interval = setInterval(() => {
+      setRemainingSeconds((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isPlaying, isActive, isDone, mode]);
 
-  // Timer continues if we're in an active session
-  // This allows timer to keep running during brief pauses when skipping tracks
+  // Complete when reaching target
   useEffect(() => {
-    let interval;
-    let pauseTimeout;
-    
-    if (isPlaying) {
-      // Mark session as active and start timer
-      sessionActiveRef.current = true;
-      if (pauseTimeout) clearTimeout(pauseTimeout);
-      
-      interval = setInterval(() => {
-        setSeconds((prev) => prev + 1);
-      }, 1000);
-    } else if (sessionActiveRef.current) {
-      // We're paused but in an active session
-      // Keep timer running for 2 seconds to allow track changes
-      pauseTimeout = setTimeout(() => {
-        // Only stop session if still paused after grace period
-        if (!isPlaying) {
-          sessionActiveRef.current = false;
-        }
-      }, 2000);
-      
-      // Continue timer during grace period
-      interval = setInterval(() => {
-        setSeconds((prev) => prev + 1);
-      }, 1000);
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-      if (pauseTimeout) clearTimeout(pauseTimeout);
-    };
-  }, [isPlaying]);
-
-  const formatTime = useCallback((totalSeconds) => {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const secs = totalSeconds % 60;
-
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
-  }, []);
-
-  // Get selected option with custom label if needed
-  const getSelectedOption = () => {
-    if (timerMode === 'custom') {
-      const totalMins = customHours * 60 + customMinutes;
-      if (customHours > 0 && customMinutes > 0) {
-        return { id: 'custom', label: `${customHours}h ${customMinutes}m`, icon: Clock };
-      } else if (customHours > 0) {
-        return { id: 'custom', label: `${customHours} hour${customHours > 1 ? 's' : ''}`, icon: Clock };
-      } else {
-        return { id: 'custom', label: `${customMinutes} minutes`, icon: Clock };
+    if (mode !== 'custom' || isDone) return;
+    if (isActive && remainingSeconds <= 0) {
+      setIsDone(true);
+      setIsActive(false);
+      if (!completedRef.current) {
+        completedRef.current = true;
+        onTimerComplete?.();
       }
     }
-    return timerOptions.find(opt => opt.id === timerMode);
-  };
-  
-  const selectedOption = getSelectedOption();
+  }, [remainingSeconds, isActive, isDone, mode, onTimerComplete]);
 
-  // Handle custom timer selection
-  const handleCustomTimerSet = () => {
-    setTimerMode('custom');
-    setShowCustomInput(false);
-    setShowDropdown(false);
+  const handleSetInfinite = () => {
+    setMode('infinite');
+    setIsActive(false);
+    setIsDone(false);
+    setElapsedSeconds(0);
+    setRemainingSeconds(0);
+    setShowControls(true);
+    completedRef.current = false;
+    onTimerReset?.();
   };
 
-  // Get transition styles based on phase
-  const getTransitionStyles = () => {
-    switch (transitionPhase) {
-      case 'morphing-out':
-        return {
-          opacity: 0,
-          transform: 'scale(0.9) translateY(6px)',
-          filter: 'blur(6px)',
-        };
-      case 'morphing-in':
-        return {
-          opacity: 1,
-          transform: 'scale(1) translateY(0)',
-          filter: 'blur(0px)',
-        };
-      default: // 'idle'
-        return {
-          opacity: 1,
-          transform: 'scale(1) translateY(0)',
-          filter: 'blur(0px)',
-        };
-    }
+  const handleStartCustom = () => {
+    const minutes = clampMinutes(customMinutes);
+    setCustomMinutes(String(minutes));
+    setMode('custom');
+    setRemainingSeconds(minutes * 60);
+    setIsActive(true);
+    setIsDone(false);
+    completedRef.current = false;
+    setShowControls(false);
+    onTimerStart?.();
+  };
+
+  const handleReopenControls = () => {
+    if (mode !== 'custom') return;
+    setShowControls((prev) => !prev);
   };
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4 select-none">
-      {/* Status text with smooth morphing transition */}
-      <div className="h-10 flex items-center justify-center">
-        <p 
-          className={`font-medium ${
-            isPlayingStyle 
-              ? 'text-xs sm:text-sm tracking-[0.25em] text-white/60 uppercase' 
-              : 'text-lg sm:text-xl tracking-wide text-white/80 normal-case'
+    <div className={`flex flex-col items-center transition-all duration-500 ease-out ${
+      showControls ? 'gap-6 translate-y-0' : 'gap-2 translate-y-2'
+    }`}>
+      {/* Display */}
+      <div className="flex flex-col items-center">
+        <div
+          onClick={handleReopenControls}
+          className={`text-7xl sm:text-8xl font-semibold tracking-tight text-white text-glow drop-shadow-[0_0_24px_rgba(255,255,255,0.35)] cursor-pointer select-none ${
+            isDone ? 'timer-flash' : ''
           }`}
-          style={{
-            ...getTransitionStyles(),
-            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
         >
-          {displayText}
-        </p>
+          {displayTime}
+        </div>
+        <div className="mt-2 text-xs sm:text-sm text-white/50 flex items-center gap-2">
+          <Clock className="w-4 h-4" />
+          <button
+            type="button"
+            onClick={handleReopenControls}
+            className="hover:text-white/80 transition-colors"
+          >
+            {mode === 'infinite' ? 'Infinite Play' : 'Custom Timer'}
+          </button>
+        </div>
       </div>
 
-      {/* Timer display */}
-      <div className="relative">
-        <h1 
-          className="text-7xl sm:text-8xl md:text-9xl font-light text-white tracking-tight text-glow"
-          style={{ fontVariantNumeric: 'tabular-nums' }}
-        >
-          {formatTime(seconds)}
-        </h1>
-        
-        {/* Subtle glow effect behind timer */}
-        <div 
-          className="absolute inset-0 blur-3xl opacity-30 -z-10"
-          style={{
-            background: 'radial-gradient(circle, rgba(99, 102, 241, 0.4) 0%, transparent 70%)',
-          }}
-        />
-      </div>
+      {/* Controls */}
+      <div className={`w-full max-w-md rounded-2xl glass p-4 transition-all duration-500 ease-out overflow-hidden ${
+        showControls ? 'max-h-80 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-3'
+      }`}>
+        <div className="flex items-center gap-2 mb-3">
+          <button
+            onClick={handleSetInfinite}
+            className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+              mode === 'infinite'
+                ? 'bg-gradient-to-r from-wave-accent to-wave-purple text-white shadow-lg shadow-wave-accent/20'
+                : 'text-white/60 hover:text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <Infinity className="w-4 h-4" />
+            Infinite
+          </button>
+          <button
+            onClick={() => setMode('custom')}
+            className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+              mode === 'custom'
+                ? 'bg-gradient-to-r from-wave-accent to-wave-purple text-white shadow-lg shadow-wave-accent/20'
+                : 'text-white/60 hover:text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            Custom
+          </button>
+        </div>
 
-      {/* Timer mode selector */}
-      <div className="relative">
-        <button
-          onClick={() => setShowDropdown(!showDropdown)}
-          className="flex items-center gap-2 px-4 py-2 rounded-full glass hover:bg-white/10 transition-all group"
-        >
-          {selectedOption?.icon && <selectedOption.icon className="w-4 h-4 text-white/70" />}
-          <span className="text-sm text-white/80">{selectedOption?.label}</span>
-          <ChevronDown className={`w-4 h-4 text-white/50 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
-        </button>
-
-        {/* Dropdown */}
-        {showDropdown && (
-          <>
-            <div 
-              className="fixed inset-0 z-10" 
-              onClick={() => {
-                setShowDropdown(false);
-                setShowCustomInput(false);
-              }} 
-            />
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 py-2 min-w-[180px] rounded-xl glass z-20">
-              {timerOptions.map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => {
-                    if (option.id === 'custom') {
-                      setShowCustomInput(true);
-                    } else {
-                      setTimerMode(option.id);
-                      setShowDropdown(false);
-                      setShowCustomInput(false);
-                    }
-                  }}
-                  className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/10 transition-colors ${
-                    timerMode === option.id ? 'text-wave-accent' : 'text-white/70'
-                  }`}
-                >
-                  {option.icon && <option.icon className="w-4 h-4" />}
-                  {option.label}
-                </button>
-              ))}
-              
-              {/* Custom timer input */}
-              {showCustomInput && (
-                <div className="px-4 py-3 border-t border-white/10 mt-2">
-                  <p className="text-xs text-white/50 mb-2">Set custom duration</p>
-                  <div className="flex items-center gap-2">
-                    <div className="flex flex-col items-center">
-                      <input
-                        type="number"
-                        min="0"
-                        max="23"
-                        value={customHours}
-                        onChange={(e) => setCustomHours(Math.max(0, Math.min(23, parseInt(e.target.value) || 0)))}
-                        className="w-12 px-2 py-1 bg-black/30 border border-white/20 rounded-lg text-white text-center text-sm focus:outline-none focus:border-wave-accent"
-                      />
-                      <span className="text-[10px] text-white/40 mt-1">hours</span>
-                    </div>
-                    <span className="text-white/50">:</span>
-                    <div className="flex flex-col items-center">
-                      <input
-                        type="number"
-                        min="0"
-                        max="59"
-                        value={customMinutes}
-                        onChange={(e) => setCustomMinutes(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
-                        className="w-12 px-2 py-1 bg-black/30 border border-white/20 rounded-lg text-white text-center text-sm focus:outline-none focus:border-wave-accent"
-                      />
-                      <span className="text-[10px] text-white/40 mt-1">mins</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleCustomTimerSet}
-                    disabled={customHours === 0 && customMinutes === 0}
-                    className="w-full mt-3 px-3 py-1.5 bg-wave-accent/20 text-wave-accent text-sm rounded-lg hover:bg-wave-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Set Timer
-                  </button>
-                </div>
-              )}
+        {mode === 'custom' && (
+          <div className="flex flex-col gap-3 pt-1">
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="1"
+                max="999"
+                value={customMinutes}
+                onChange={(e) => setCustomMinutes(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-xl bg-black/30 border border-white/15 text-white text-sm focus:outline-none focus:border-wave-accent/50"
+                placeholder="Minutes"
+                aria-label="Custom timer minutes"
+              />
+              <span className="text-white/50 text-sm">min</span>
             </div>
-          </>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleStartCustom}
+                className="flex-1 px-3 py-2 rounded-xl text-sm font-medium bg-white text-wave-dark hover:opacity-90 transition-all flex items-center justify-center gap-2"
+              >
+                <Play className="w-4 h-4" />
+                Start
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>

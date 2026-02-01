@@ -193,3 +193,17 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .animate-backdrop-in {
   animation: backdrop-fade-in 0.2s ease-out forwards;
 }
+
+/* Timer flash when complete */
+@keyframes timer-flash {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.timer-flash {
+  animation: timer-flash 1.6s ease-in-out infinite;
+}

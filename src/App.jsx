@@ -4,6 +4,7 @@ import BackgroundDots from './components/BackgroundDots';
 import WaveAnimation from './components/WaveAnimation';
 import Header from './components/Header';
 import Timer from './components/Timer';
+import BinauralMixSection from './components/BinauralMixSection';
 import PlayerControls from './components/PlayerControls';
 import TrackInfo from './components/TrackInfo';
 import useYouTubePlayer from './hooks/useYouTubePlayer';
@@ -57,7 +58,7 @@ const tracksByMode = {
     },
 
   ],
-  'Focus': [
+  'Ambient': [
     {
       id: 1,
       title: 'escape reality.',
@@ -116,6 +117,8 @@ const tracksByMode = {
     },
   ],
 };
+
+const BINAURAL_STORAGE_KEY = 'wavetune_binaural_tracks';
 
 // Module-level cache for transition data (survives React Strict Mode remounts)
 let cachedTransitionData = null;
@@ -188,16 +191,26 @@ const PlayerPage = () => {
   }, [isFromAuthTransition]);
   
   // Player state
-  const [currentMode, setCurrentMode] = useState('Focus');
+  const [currentMode, setCurrentMode] = useState('Ambient');
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isLooping, setIsLooping] = useState(true);
   const [volume, setVolume] = useState(75);
   const [isMuted, setIsMuted] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [loopRegion, setLoopRegion] = useState(null); // { start, end } for custom loop
+  const [binauralTracks, setBinauralTracks] = useState(() => {
+    try {
+      const stored = localStorage.getItem(BINAURAL_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  });
 
   // Get tracks for current mode
-  const currentTracks = tracksByMode[currentMode] || tracksByMode.Focus;
+  const currentTracks = currentMode === 'Binaural'
+    ? binauralTracks
+    : (tracksByMode[currentMode] || tracksByMode.Ambient);
   const currentTrack = currentTracks[currentTrackIndex] || currentTracks[0];
 
   // Sync with YouTube player state
@@ -206,6 +219,10 @@ const PlayerPage = () => {
   // Track if we were playing before track change (for auto-play on skip)
   const wasPlayingRef = useRef(false);
   const previousTrackIdRef = useRef(null);
+  const trackPositionsRef = useRef({});
+  const fadeIntervalRef = useRef(null);
+  const fadeActiveRef = useRef(false);
+  const lastVolumeBeforeFadeRef = useRef(75);
 
   // Load video when track or mode changes
   useEffect(() => {
@@ -218,6 +235,13 @@ const PlayerPage = () => {
       console.log('Loading video:', currentTrack.youtubeId, 'wasPlaying:', wasPlayingRef.current);
       previousTrackIdRef.current = currentTrack.youtubeId;
       youtube.loadVideo(currentTrack.youtubeId);
+
+      const resumeTime = trackPositionsRef.current[currentTrack.youtubeId] || 0;
+      if (resumeTime > 0.5) {
+        setTimeout(() => {
+          youtube.seekTo(resumeTime);
+        }, 350);
+      }
       
       // Auto-play if we were playing before (and this is a track change)
       if (isTrackChange && wasPlayingRef.current) {
@@ -256,6 +280,12 @@ const PlayerPage = () => {
     setLoopRegion(null); // Clear loop when changing modes
   }, [currentMode]);
 
+  const saveCurrentTrackPosition = useCallback(() => {
+    if (!currentTrack?.youtubeId) return;
+    const time = youtube.currentTime || 0;
+    trackPositionsRef.current[currentTrack.youtubeId] = time;
+  }, [currentTrack?.youtubeId, youtube.currentTime]);
+
   // Handle loop region - loop back to start when reaching end
   useEffect(() => {
     if (!loopRegion || !isPlaying) return;
@@ -285,20 +315,22 @@ const PlayerPage = () => {
   }, [youtube]);
 
   const handleNext = useCallback(() => {
+    if (!currentTracks || currentTracks.length === 0) return;
+    saveCurrentTrackPosition();
     // Remember if we were playing before skipping
     wasPlayingRef.current = youtube.isPlaying;
-    const tracks = tracksByMode[currentMode] || tracksByMode.Liminal;
-    setCurrentTrackIndex((prev) => (prev + 1) % tracks.length);
-  }, [currentMode, youtube.isPlaying]);
+    setCurrentTrackIndex((prev) => (prev + 1) % currentTracks.length);
+  }, [currentTracks, saveCurrentTrackPosition, youtube.isPlaying]);
 
   const handlePrevious = useCallback(() => {
+    if (!currentTracks || currentTracks.length === 0) return;
+    saveCurrentTrackPosition();
     // Remember if we were playing before skipping
     wasPlayingRef.current = youtube.isPlaying;
-    const tracks = tracksByMode[currentMode] || tracksByMode.Focus;
     setCurrentTrackIndex((prev) => 
-      prev === 0 ? tracks.length - 1 : prev - 1
+      prev === 0 ? currentTracks.length - 1 : prev - 1
     );
-  }, [currentMode, youtube.isPlaying]);
+  }, [currentTracks, saveCurrentTrackPosition, youtube.isPlaying]);
 
   const handleToggleLoop = useCallback(() => {
     setIsLooping((prev) => !prev);
@@ -324,12 +356,108 @@ const PlayerPage = () => {
   }, [handleNext]);
 
   const handleModeChange = useCallback((mode) => {
+    saveCurrentTrackPosition();
     setCurrentMode(mode);
-  }, []);
+  }, [saveCurrentTrackPosition]);
 
   const handleBack = useCallback(() => {
     console.log('Navigate back');
   }, []);
+
+  const handleAddBinauralTrack = useCallback((track) => {
+    const newTrack = {
+      id: Date.now(),
+      title: track.title,
+      neuralEffect: 'Binaural Mix',
+      tags: ['BINAURAL'],
+      youtubeId: track.youtubeId,
+      artwork: null,
+    };
+    setBinauralTracks((prev) => {
+      const updated = [newTrack, ...prev];
+      localStorage.setItem(BINAURAL_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+    setCurrentMode('Binaural');
+    setCurrentTrackIndex(0);
+  }, []);
+
+  const handleSelectBinauralTrack = useCallback((index) => {
+    if (!binauralTracks || binauralTracks.length === 0) return;
+    saveCurrentTrackPosition();
+    setCurrentTrackIndex(index);
+  }, [binauralTracks, saveCurrentTrackPosition]);
+
+  const clearFadeOut = useCallback(() => {
+    if (fadeIntervalRef.current) {
+      clearInterval(fadeIntervalRef.current);
+      fadeIntervalRef.current = null;
+    }
+    fadeActiveRef.current = false;
+  }, []);
+
+  const notifyTimerComplete = useCallback(() => {
+    if (!('Notification' in window)) return;
+    const show = () => {
+      try {
+        new Notification('Timer finished', {
+          body: 'Your session is complete. Music is fading out.',
+        });
+      } catch (e) {
+        // Ignore notification errors
+      }
+    };
+
+    if (Notification.permission === 'granted') {
+      show();
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') show();
+      });
+    }
+  }, []);
+
+  const handleTimerComplete = useCallback(() => {
+    if (fadeActiveRef.current) return;
+    fadeActiveRef.current = true;
+    lastVolumeBeforeFadeRef.current = volume;
+    if (isMuted) setIsMuted(false);
+    notifyTimerComplete();
+
+    let currentVolume = volume;
+    const steps = 24;
+    const stepAmount = Math.max(1, Math.ceil(volume / steps));
+
+    fadeIntervalRef.current = setInterval(() => {
+      currentVolume = Math.max(0, currentVolume - stepAmount);
+      setVolume(currentVolume);
+      if (currentVolume <= 0) {
+        clearFadeOut();
+        youtube.pause();
+      }
+    }, 250);
+  }, [clearFadeOut, isMuted, notifyTimerComplete, volume, youtube.pause]);
+
+  const handleTimerReset = useCallback(() => {
+    const shouldRestore = fadeActiveRef.current || volume === 0;
+    clearFadeOut();
+    fadeActiveRef.current = false;
+    if (shouldRestore && lastVolumeBeforeFadeRef.current > 0) {
+      setVolume(lastVolumeBeforeFadeRef.current);
+    }
+  }, [clearFadeOut, volume]);
+
+  const handleTimerStart = useCallback(() => {
+    if (volume === 0 && lastVolumeBeforeFadeRef.current > 0) {
+      setVolume(lastVolumeBeforeFadeRef.current);
+    }
+    if (isMuted) {
+      setIsMuted(false);
+    }
+    if (!youtube.isPlaying) {
+      youtube.play();
+    }
+  }, [isMuted, volume, youtube]);
 
 
   return (
@@ -366,7 +494,20 @@ const PlayerPage = () => {
         <main className={`flex-1 flex flex-col items-center justify-center px-4 transition-all duration-700 ease-out ${
           timerVisible ? 'opacity-100 scale-100 blur-0' : 'opacity-0 scale-90 blur-sm'
         }`}>
-          <Timer isPlaying={isPlaying} mode={currentMode} />
+          <Timer 
+            isPlaying={isPlaying}
+            onTimerComplete={handleTimerComplete}
+            onTimerReset={handleTimerReset}
+            onTimerStart={handleTimerStart}
+          />
+
+          {currentMode === 'Binaural' && (
+            <BinauralMixSection
+              tracks={binauralTracks}
+              onAddTrack={handleAddBinauralTrack}
+              onSelectTrack={handleSelectBinauralTrack}
+            />
+          )}
         </main>
 
         {/* Bottom section */}

@@ -9,7 +9,7 @@ import AmbientMixer from './AmbientMixer';
 import Timeline from './Timeline';
 
 const Header = ({ 
-  currentMode = 'Focus', 
+  currentMode = 'Ambient', 
   onModeChange, 
   onBack, 
   // Timeline props
@@ -19,7 +19,7 @@ const Header = ({
   onLoopChange,
   isPlaying = false,
 }) => {
-  const modes = ['Focus', 'Liminal', 'Games'];
+  const modes = ['Ambient', 'Liminal', 'Games', 'Binaural'];
   const [showAmbientMixer, setShowAmbientMixer] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
   const ambientButtonRef = useRef(null);
