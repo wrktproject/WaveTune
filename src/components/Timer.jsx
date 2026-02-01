@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Infinity, Clock, Play } from 'lucide-react';
 
 const formatTime = (seconds) => {
@@ -19,6 +19,8 @@ const Timer = ({
   onTimerComplete,
   onTimerReset,
   onTimerStart,
+  onTimerDoneChange,
+  restartSignal = 0,
 }) => {
   const [mode, setMode] = useState('infinite'); // 'infinite' | 'custom'
   const [customMinutes, setCustomMinutes] = useState('25');
@@ -76,7 +78,7 @@ const Timer = ({
     onTimerReset?.();
   };
 
-  const handleStartCustom = () => {
+  const handleStartCustom = useCallback(() => {
     const minutes = clampMinutes(customMinutes);
     setCustomMinutes(String(minutes));
     setMode('custom');
@@ -86,7 +88,17 @@ const Timer = ({
     completedRef.current = false;
     setShowControls(false);
     onTimerStart?.();
-  };
+  }, [customMinutes, onTimerStart]);
+
+  useEffect(() => {
+    onTimerDoneChange?.(isDone);
+  }, [isDone, onTimerDoneChange]);
+
+  useEffect(() => {
+    if (restartSignal <= 0) return;
+    if (mode !== 'custom') return;
+    handleStartCustom();
+  }, [restartSignal, mode, handleStartCustom]);
 
   const handleReopenControls = () => {
     if (mode !== 'custom') return;

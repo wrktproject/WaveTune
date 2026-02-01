@@ -4,7 +4,6 @@ import BackgroundDots from './components/BackgroundDots';
 import WaveAnimation from './components/WaveAnimation';
 import Header from './components/Header';
 import Timer from './components/Timer';
-import BinauralMixSection from './components/BinauralMixSection';
 import PlayerControls from './components/PlayerControls';
 import TrackInfo from './components/TrackInfo';
 import useYouTubePlayer from './hooks/useYouTubePlayer';
@@ -116,9 +115,34 @@ const tracksByMode = {
       artwork: null,
     },
   ],
+  'Binaural': [
+    {
+      id: 1,
+      title: '14hz (3 hrs).',
+      neuralEffect: 'Medium Neural Effect',
+      tags: ['BINAURAL', 'FOCUS'],
+      youtubeId: 'HA6nSQawROM', // lofi hip hop radio - beats to relax/study to
+      artwork: null,
+    },
+    {
+      id: 2,
+      title: '40hz (1.5 hrs).',
+      neuralEffect: 'Medium Neural Effect',
+      tags: ['BINAURAL', 'FOCUS'],
+      youtubeId: 'vLEek3I3wac', // lofi hip hop radio - beats to relax/study to
+      artwork: null,
+    },
+    {
+      id: 3,
+      title: '40hz (4 hrs).',
+      neuralEffect: 'Medium Neural Effect',
+      tags: ['BINAURAL', 'FOCUS'],
+      youtubeId: 'TVNciuZac3I', // lofi hip hop radio - beats to relax/study to
+      artwork: null,
+    },
+  ],
 };
 
-const BINAURAL_STORAGE_KEY = 'wavetune_binaural_tracks';
 
 // Module-level cache for transition data (survives React Strict Mode remounts)
 let cachedTransitionData = null;
@@ -198,19 +222,11 @@ const PlayerPage = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [loopRegion, setLoopRegion] = useState(null); // { start, end } for custom loop
-  const [binauralTracks, setBinauralTracks] = useState(() => {
-    try {
-      const stored = localStorage.getItem(BINAURAL_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [timerDone, setTimerDone] = useState(false);
+  const [timerRestartSignal, setTimerRestartSignal] = useState(0);
 
   // Get tracks for current mode
-  const currentTracks = currentMode === 'Binaural'
-    ? binauralTracks
-    : (tracksByMode[currentMode] || tracksByMode.Ambient);
+  const currentTracks = tracksByMode[currentMode] || tracksByMode.Ambient;
   const currentTrack = currentTracks[currentTrackIndex] || currentTracks[0];
 
   // Sync with YouTube player state
@@ -311,8 +327,12 @@ const PlayerPage = () => {
   // Playback controls
   const handlePlayPause = useCallback(() => {
     console.log('handlePlayPause called, current isPlaying:', youtube.isPlaying);
+    if (timerDone) {
+      setTimerRestartSignal((prev) => prev + 1);
+      return;
+    }
     youtube.togglePlay();
-  }, [youtube]);
+  }, [timerDone, youtube]);
 
   const handleNext = useCallback(() => {
     if (!currentTracks || currentTracks.length === 0) return;
@@ -364,29 +384,6 @@ const PlayerPage = () => {
     console.log('Navigate back');
   }, []);
 
-  const handleAddBinauralTrack = useCallback((track) => {
-    const newTrack = {
-      id: Date.now(),
-      title: track.title,
-      neuralEffect: 'Binaural Mix',
-      tags: ['BINAURAL'],
-      youtubeId: track.youtubeId,
-      artwork: null,
-    };
-    setBinauralTracks((prev) => {
-      const updated = [newTrack, ...prev];
-      localStorage.setItem(BINAURAL_STORAGE_KEY, JSON.stringify(updated));
-      return updated;
-    });
-    setCurrentMode('Binaural');
-    setCurrentTrackIndex(0);
-  }, []);
-
-  const handleSelectBinauralTrack = useCallback((index) => {
-    if (!binauralTracks || binauralTracks.length === 0) return;
-    saveCurrentTrackPosition();
-    setCurrentTrackIndex(index);
-  }, [binauralTracks, saveCurrentTrackPosition]);
 
   const clearFadeOut = useCallback(() => {
     if (fadeIntervalRef.current) {
@@ -499,15 +496,10 @@ const PlayerPage = () => {
             onTimerComplete={handleTimerComplete}
             onTimerReset={handleTimerReset}
             onTimerStart={handleTimerStart}
+            onTimerDoneChange={setTimerDone}
+            restartSignal={timerRestartSignal}
           />
 
-          {currentMode === 'Binaural' && (
-            <BinauralMixSection
-              tracks={binauralTracks}
-              onAddTrack={handleAddBinauralTrack}
-              onSelectTrack={handleSelectBinauralTrack}
-            />
-          )}
         </main>
 
         {/* Bottom section */}
