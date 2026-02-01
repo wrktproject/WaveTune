@@ -118,7 +118,7 @@ const tracksByMode = {
   'Binaural': [
     {
       id: 1,
-      title: '14hz Calm, sustained focus (3 hrs).',
+      title: '14hz calm, sustained focus (3 hrs).',
       neuralEffect: 'Medium Neural Effect',
       tags: ['BINAURAL', 'FOCUS'],
       youtubeId: 'HA6nSQawROM', // lofi hip hop radio - beats to relax/study to
@@ -126,7 +126,7 @@ const tracksByMode = {
     },
     {
       id: 2,
-      title: '40hz Memory-heavy tasks (1.5 hrs).',
+      title: '40hz memory-heavy tasks (1.5 hrs).',
       neuralEffect: 'Medium Neural Effect',
       tags: ['BINAURAL', 'FOCUS'],
       youtubeId: 'vLEek3I3wac', // lofi hip hop radio - beats to relax/study to
@@ -134,7 +134,7 @@ const tracksByMode = {
     },
     {
       id: 3,
-      title: '40hz High-level cognitive processing (4 hrs).',
+      title: '40hz high-level processing (4 hrs).',
       neuralEffect: 'Medium Neural Effect',
       tags: ['BINAURAL', 'FOCUS'],
       youtubeId: 'TVNciuZac3I', // lofi hip hop radio - beats to relax/study to
@@ -142,7 +142,7 @@ const tracksByMode = {
     },
     {
       id: 4,
-      title: '10hz Creative / idea-generating state (2 hrs).',
+      title: '10hz idea-generating state (2 hrs).',
       neuralEffect: 'High Neural Effect',
       tags: ['BINAURAL', 'UPLIFTING'],
       youtubeId: 'x6A5b6xgwzA', // lofi hip hop radio - beats to relax/study to
