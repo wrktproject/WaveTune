@@ -29,6 +29,7 @@ const Timer = ({
   const [isActive, setIsActive] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [showControls, setShowControls] = useState(true);
+  const [isTimeBlurred, setIsTimeBlurred] = useState(false);
   const completedRef = useRef(false);
 
   const displayTime = useMemo(() => {
@@ -74,6 +75,7 @@ const Timer = ({
     setElapsedSeconds(0);
     setRemainingSeconds(0);
     setShowControls(true);
+    setIsTimeBlurred(false);
     completedRef.current = false;
     onTimerReset?.();
   };
@@ -100,9 +102,23 @@ const Timer = ({
     handleStartCustom();
   }, [restartSignal, mode, handleStartCustom]);
 
+  useEffect(() => {
+    if (mode === 'custom') {
+      setIsTimeBlurred(false);
+    }
+  }, [mode]);
+
   const handleReopenControls = () => {
     if (mode !== 'custom') return;
     setShowControls((prev) => !prev);
+  };
+
+  const handleDisplayClick = () => {
+    if (mode === 'infinite') {
+      setIsTimeBlurred((prev) => !prev);
+      return;
+    }
+    handleReopenControls();
   };
 
   return (
@@ -112,9 +128,11 @@ const Timer = ({
       {/* Display */}
       <div className="flex flex-col items-center">
         <div
-          onClick={handleReopenControls}
+          onClick={handleDisplayClick}
           className={`text-7xl sm:text-8xl font-semibold tracking-tight text-white text-glow drop-shadow-[0_0_24px_rgba(255,255,255,0.35)] cursor-pointer select-none ${
             isDone ? 'timer-flash' : ''
+          } ${
+            mode === 'infinite' && isTimeBlurred ? 'blur-md opacity-40' : ''
           }`}
         >
           {displayTime}

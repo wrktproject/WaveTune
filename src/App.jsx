@@ -148,6 +148,14 @@ const tracksByMode = {
       youtubeId: 'x6A5b6xgwzA', // lofi hip hop radio - beats to relax/study to
       artwork: null,
     },
+    {
+      id: 5,
+      title: '14hz for focus and memory (2 hrs).',
+      neuralEffect: 'High Neural Effect',
+      tags: ['BINAURAL', 'DEEPWORK'],
+      youtubeId: 'HA6nSQawROM&t=37s', // lofi hip hop radio - beats to relax/study to
+      artwork: null,
+    },
   ],
 };
 
