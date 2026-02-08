@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Infinity, Clock, Play } from 'lucide-react';
+import { Infinity, Clock, Play, Lock } from 'lucide-react';
 
 const formatTime = (seconds) => {
   if (!seconds || seconds < 0 || Number.isNaN(seconds)) return '0:00';
@@ -30,7 +30,9 @@ const Timer = ({
   const [isDone, setIsDone] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isTimeBlurred, setIsTimeBlurred] = useState(false);
+  const [isUnlocking, setIsUnlocking] = useState(false);
   const completedRef = useRef(false);
+  const prevHiddenRef = useRef(false);
 
   const displayTime = useMemo(() => {
     if (mode === 'infinite') return formatTime(elapsedSeconds);
@@ -121,6 +123,19 @@ const Timer = ({
     handleReopenControls();
   };
 
+  const isInfiniteHidden = mode === 'infinite' && isTimeBlurred;
+
+  useEffect(() => {
+    const wasHidden = prevHiddenRef.current;
+    if (wasHidden && !isInfiniteHidden) {
+      setIsUnlocking(true);
+      const timer = setTimeout(() => setIsUnlocking(false), 420);
+      prevHiddenRef.current = isInfiniteHidden;
+      return () => clearTimeout(timer);
+    }
+    prevHiddenRef.current = isInfiniteHidden;
+  }, [isInfiniteHidden]);
+
   return (
     <div className={`flex flex-col items-center transition-all duration-500 ease-out ${
       showControls ? 'gap-6 translate-y-0' : 'gap-2 translate-y-2'
@@ -129,13 +144,22 @@ const Timer = ({
       <div className="flex flex-col items-center">
         <div
           onClick={handleDisplayClick}
-          className={`text-7xl sm:text-8xl font-semibold tracking-tight text-white text-glow drop-shadow-[0_0_24px_rgba(255,255,255,0.35)] cursor-pointer select-none ${
+          className={`text-7xl sm:text-8xl font-semibold tracking-tight text-white text-glow drop-shadow-[0_0_24px_rgba(255,255,255,0.35)] cursor-pointer select-none flex items-center justify-center ${
             isDone ? 'timer-flash' : ''
-          } ${
-            mode === 'infinite' && isTimeBlurred ? 'blur-md opacity-40' : ''
           }`}
         >
-          {displayTime}
+          <span className="timer-morph">
+            <span className={`timer-layer ${isInfiniteHidden ? 'timer-layer-hidden' : ''}`}>
+              {displayTime}
+            </span>
+            <span className={`timer-layer ${isInfiniteHidden ? '' : 'timer-layer-hidden'}`}>
+              <Lock
+                className={`w-14 h-14 sm:w-16 sm:h-16 text-white/90 drop-shadow-[0_0_26px_rgba(255,255,255,0.65)] ${
+                  isUnlocking ? 'timer-unlock' : ''
+                }`}
+              />
+            </span>
+          </span>
         </div>
         <div className="mt-2 text-xs sm:text-sm text-white/50 flex items-center gap-2">
           <Clock className="w-4 h-4" />
