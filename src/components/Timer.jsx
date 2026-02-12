@@ -39,14 +39,14 @@ const Timer = ({
     return formatTime(remainingSeconds);
   }, [mode, elapsedSeconds, remainingSeconds]);
 
-  // Tick up for infinite mode
+  // Tick up for total focus time tracking
   useEffect(() => {
-    if (!isPlaying || mode !== 'infinite') return;
+    if (!isPlaying) return;
     const interval = setInterval(() => {
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);
     return () => clearInterval(interval);
-  }, [isPlaying, mode]);
+  }, [isPlaying]);
 
   // Tick down for custom mode
   useEffect(() => {
@@ -74,7 +74,6 @@ const Timer = ({
     setMode('infinite');
     setIsActive(false);
     setIsDone(false);
-    setElapsedSeconds(0);
     setRemainingSeconds(0);
     setShowControls(true);
     setIsTimeBlurred(false);

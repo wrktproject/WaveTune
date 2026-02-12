@@ -121,7 +121,7 @@ const tracksByMode = {
       title: '14hz calm, sustained focus (3 hrs).',
       neuralEffect: 'Medium Neural Effect',
       tags: ['BINAURAL', 'FOCUS'],
-      youtubeId: 'HA6nSQawROM', // lofi hip hop radio - beats to relax/study to
+      youtubeId: 'HA6nSQawROM',
       artwork: null,
     },
     {
@@ -129,7 +129,7 @@ const tracksByMode = {
       title: '40hz memory-heavy tasks (1.5 hrs).',
       neuralEffect: 'Medium Neural Effect',
       tags: ['BINAURAL', 'FOCUS'],
-      youtubeId: 'vLEek3I3wac', // lofi hip hop radio - beats to relax/study to
+      youtubeId: 'vLEek3I3wac',
       artwork: null,
     },
     {
@@ -137,7 +137,7 @@ const tracksByMode = {
       title: '40hz high-level processing (4 hrs).',
       neuralEffect: 'Medium Neural Effect',
       tags: ['BINAURAL', 'FOCUS'],
-      youtubeId: 'TVNciuZac3I', // lofi hip hop radio - beats to relax/study to
+      youtubeId: 'TVNciuZac3I',
       artwork: null,
     },
     {
@@ -145,7 +145,7 @@ const tracksByMode = {
       title: '10hz idea-generating state (2 hrs).',
       neuralEffect: 'High Neural Effect',
       tags: ['BINAURAL', 'UPLIFTING'],
-      youtubeId: 'x6A5b6xgwzA', // lofi hip hop radio - beats to relax/study to
+      youtubeId: 'x6A5b6xgwzA',
       artwork: null,
     },
     {
@@ -153,7 +153,49 @@ const tracksByMode = {
       title: '14hz for focus and memory (2 hrs).',
       neuralEffect: 'High Neural Effect',
       tags: ['BINAURAL', 'DEEPWORK'],
-      youtubeId: 'HA6nSQawROM&t=37s', // lofi hip hop radio - beats to relax/study to
+      youtubeId: 'HA6nSQawROM&t=37s',
+      artwork: null,
+    },
+  ],
+  'Motivation': [
+    {
+      id: 1,
+      title: 'What If It All Works Out?',
+      neuralEffect: 'Turbo Neural Effect',
+      tags: ['ENERGIZING', 'UPLIFTING'],
+      youtubeId: 'XPu4UkjnGP0', // Aggressive focus music
+      artwork: null,
+    },
+    {
+      id: 2,
+      title: 'Be Delusional.',
+      neuralEffect: 'High Neural Effect',
+      tags: ['MOTIVATING'],
+      youtubeId: 'yP9SjQpsOc8', // Cyberpunk focus
+      artwork: null,
+    },
+    {
+      id: 3,
+      title: 'Visualize and MAKE IT HAPPEN',
+      neuralEffect: 'Max Neural Effect',
+      tags: ['MINDSET', 'ZONE'],
+      youtubeId: '3CK2Md9Ov6s', // Deep work motivation
+      artwork: null,
+    },
+    {
+      id: 4,
+      title: '40 Minutes (Hormozi x Williamson)',
+      neuralEffect: 'Max Neural Effect',
+      tags: ['MINDSET', 'ZONE'],
+      youtubeId: 'Wy7CTJcfiM4&t=25s', // Deep work motivation
+      artwork: null,
+    },
+    {
+      id: 5,
+      title: 'Visualization (18 minutes)',
+      neuralEffect: 'Max Neural Effect',
+      tags: ['MINDSET', 'FUTURE'],
+      youtubeId: 'kskUPNtJuFg', // Deep work motivation
       artwork: null,
     },
   ],
@@ -230,9 +272,28 @@ const PlayerPage = () => {
     }
   }, [isFromAuthTransition]);
   
-  // Player state
-  const [currentMode, setCurrentMode] = useState('Ambient');
-  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  // Player state - Randomize on initial load
+  const [currentMode, setCurrentMode] = useState(() => {
+    const modes = Object.keys(tracksByMode);
+    return modes[Math.floor(Math.random() * modes.length)];
+  });
+  
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(() => {
+    // We can't easily access the randomized mode here because state isn't set yet
+    // But we know 'Ambient' is a safe default for length check if needed, 
+    // or just pick a random index and clamp it later if it fails (better to use effect or a single state object)
+    // Let's just pick one mode and track index together
+    return 0; // Will be set correctly by initial mode logic if we restructure or just pick 0
+  });
+
+  // Ensure random track index for the randomized mode
+  useEffect(() => {
+    const tracks = tracksByMode[currentMode];
+    if (tracks) {
+      const randomIndex = Math.floor(Math.random() * tracks.length);
+      setCurrentTrackIndex(randomIndex);
+    }
+  }, []); // Only on mount
   const [isLooping, setIsLooping] = useState(true);
   const [volume, setVolume] = useState(75);
   const [isMuted, setIsMuted] = useState(false);

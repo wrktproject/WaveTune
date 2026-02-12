@@ -19,7 +19,7 @@ const Header = ({
   onLoopChange,
   isPlaying = false,
 }) => {
-  const modes = ['Ambient', 'Liminal', 'Games', 'Binaural'];
+  const modes = ['Ambient', 'Liminal', 'Games', 'Binaural', 'Motivation'];
   const [showAmbientMixer, setShowAmbientMixer] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
   const ambientButtonRef = useRef(null);
