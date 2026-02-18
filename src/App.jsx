@@ -198,6 +198,14 @@ const tracksByMode = {
       youtubeId: 'kskUPNtJuFg', // Deep work motivation
       artwork: null,
     },
+    {
+      id: 6,
+      title: 'Escape the system',
+      neuralEffect: 'Max Neural Effect',
+      tags: ['MINDSET', 'FUTURE'],
+      youtubeId: 'ZHBOQShmHYE', // Deep work motivation
+      artwork: null,
+    },
   ],
 };
 
