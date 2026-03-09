@@ -206,6 +206,14 @@ const tracksByMode = {
       youtubeId: 'ZHBOQShmHYE', // Deep work motivation
       artwork: null,
     },
+    {
+      id: 7,
+      title: 'Time to Get Back To Work.',
+      neuralEffect: 'Max Neural Effect',
+      tags: ['MINDSET', 'MOTIVATION'],
+      youtubeId: 'kuKpq3MJysc&t=142s', // Deep work motivation
+      artwork: null,
+    },
   ],
 };
 
